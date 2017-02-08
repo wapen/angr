@@ -443,12 +443,7 @@ class Project(object):
                 l.warning("Re-hooking symbol " + name)
                 self.unhook(pseudo_addr)
 
-                self.hook(pseudo_addr, obj)
-            else:
-                # This is pretty intensely sketchy
-                pseudo_addr = obj
-                pseudo_vaddr = obj - self._extern_obj.rebase_addr
-
+            self.hook(pseudo_addr, obj)
             provisions[name] = (pseudo_vaddr, 0, None)
 
         self.loader.provide_symbol_batch(self._extern_obj, provisions)
