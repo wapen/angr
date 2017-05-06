@@ -1259,6 +1259,10 @@ class CFGAccurate(ForwardAnalysis, CFGBase):    # pylint: disable=abstract-metho
 
         all_successors = successors + sim_successors.unconstrained_successors
 
+        # make sure FakeRets are at the last
+        all_successors = [ suc for suc in all_successors if suc.scratch.jumpkind != 'Ijk_FakeRet' ] + \
+                         [ suc for suc in all_successors if suc.scratch.jumpkind == 'Ijk_FakeRet' ]
+
         if self._keep_state:
             entry.cfg_node.final_states = all_successors[::]
 
@@ -1823,6 +1827,13 @@ class CFGAccurate(ForwardAnalysis, CFGBase):    # pylint: disable=abstract-metho
                 # TODO: Is it really OK?
                 func_addr = self._block_id_addr(node_key)
 
+            if node_key.jump_type == 'syscall':
+                # it's a syscall
+                is_syscall = True
+            else:
+                is_syscall = False
+
+
             pt = CFGNode(self._block_id_addr(node_key),
                          None,
                          self,
@@ -1831,6 +1842,7 @@ class CFGAccurate(ForwardAnalysis, CFGBase):    # pylint: disable=abstract-metho
                          simprocedure_name="PathTerminator",
                          function_address=func_addr,
                          callstack_key=self._block_id_callstack_key(node_key),
+                         is_syscall=is_syscall,
                          )
             if self._keep_state:
                 # We don't have an input state available for it (otherwise we won't have to create a
@@ -2510,15 +2522,12 @@ class CFGAccurate(ForwardAnalysis, CFGBase):    # pylint: disable=abstract-metho
         symbolic_initial_state = self.project.factory.entry_state(mode='symbolic')
         if fastpath_state is not None:
             symbolic_initial_state = self.project._simos.prepare_call_state(fastpath_state,
-                                                                           initial_state=symbolic_initial_state)
+                                                                            initial_state=symbolic_initial_state)
 
-        # Create a temporary block
-        try:
-            tmp_block = self.project.factory.block(function_addr)
-        except (simuvex.SimError, AngrError):
-            return None
-
-        num_instr = tmp_block.instructions - 1
+        # Find number of instructions of start block
+        func = self.project.kb.functions.get(function_addr)
+        start_block = func._get_block(function_addr)
+        num_instr = start_block.instructions - 1
 
         symbolic_initial_state.ip = function_addr
         path = self.project.factory.path(symbolic_initial_state)

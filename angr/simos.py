@@ -520,6 +520,7 @@ class SimLinux(SimOS):
             39: ('getpid', 'getpid'),
             60: ('exit', 'exit'),
             63: ('uname', 'uname'),
+            87: ('unlink', 'unlink'),
             158: ('arch_prctl','arch_prctl'),
             186: ('gettid', 'gettid'),
             201: ('time', 'time'),
@@ -849,9 +850,6 @@ class SimCGC(SimOS):
         if o.ABSTRACT_MEMORY not in s.options:
             s.memory.mem._preapproved_stack = IRange(0xbaaab000 - 1024*1024*8, 0xbaaab000)
             s.memory.map_region(0x4347c000, 4096, 1)
-
-        # 'main' gets called with the magic page address as the first fast arg
-        s.regs.ecx = 0x4347c000
 
         s.register_plugin('posix', SimStateSystem(fs=fs))
 

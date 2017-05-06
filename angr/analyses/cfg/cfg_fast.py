@@ -1624,7 +1624,7 @@ class CFGFast(ForwardAnalysis, CFGBase):    # pylint: disable=abstract-method
                     if target_func_addr is None:
                         target_func_addr = current_function_addr
 
-                    to_outside = target_func_addr == current_function_addr
+                    to_outside = not target_func_addr == current_function_addr
 
                 r = self._function_add_transition_edge(target_addr, cfg_node, current_function_addr, ins_addr=ins_addr,
                                                        stmt_idx=stmt_idx, to_outside=to_outside
@@ -2480,7 +2480,7 @@ class CFGFast(ForwardAnalysis, CFGBase):    # pylint: disable=abstract-method
             return False, None
 
         # Perform a backward slicing from the jump target
-        b = Blade(self.graph, addr, -1, cfg=self, project=self.project, ignore_sp=True, ignore_bp=True, max_level=2)
+        b = Blade(self.graph, addr, -1, cfg=self, project=self.project, ignore_sp=True, ignore_bp=True, max_level=3)
 
         stmt_loc = (addr, 'default')
         if stmt_loc not in b.slice:
@@ -2567,7 +2567,9 @@ class CFGFast(ForwardAnalysis, CFGBase):    # pylint: disable=abstract-method
             start_path = self.project.factory.path(start_state)
 
             # Create the slicecutor
-            slicecutor = Slicecutor(self.project, annotatedcfg, start=start_path, targets=(load_stmt_loc[0],))
+            slicecutor = Slicecutor(self.project, annotatedcfg, start=start_path, targets=(load_stmt_loc[0],),
+                                    force_taking_exit=True
+                                    )
 
             # Run it!
             try:
@@ -2844,7 +2846,7 @@ class CFGFast(ForwardAnalysis, CFGBase):    # pylint: disable=abstract-method
 
         sorted_nodes = sorted(self.graph.nodes(), key=lambda n: n.addr if n is not None else 0)
 
-        all_plt_stub_addrs = set(*itertools.chain(obj.reverse_plt.keys() for obj in self.project.loader.all_objects if isinstance(obj, cle.MetaELF)))
+        all_plt_stub_addrs = set(itertools.chain.from_iterable(obj.reverse_plt.keys() for obj in self.project.loader.all_objects if isinstance(obj, cle.MetaELF)))
 
         # go over the list. for each node that is the beginning of a function and is not properly aligned, if its
         # leading instruction is a single-byte or multi-byte nop, make sure there is another CFGNode starts after the
